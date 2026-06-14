@@ -1,0 +1,5 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+garminconnect>=0.2.19
+python-dotenv>=1.0
+jinja2>=3.1
