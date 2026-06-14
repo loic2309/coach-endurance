@@ -3,7 +3,47 @@ const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const el = (html) => { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstElementChild; };
 
+// Mode statique : si des données sont embarquées (build GitHub Pages / fichier local),
+// on sert tout depuis window.__COACH_DATA__ et on persiste les séances via localStorage.
+const STATIC = typeof window !== "undefined" && !!window.__COACH_DATA__;
+
+function _monday(iso) {
+  const d = new Date((iso || new Date().toISOString().slice(0, 10)) + "T00:00:00");
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
+}
+
+function staticApi(path, opts) {
+  const D = window.__COACH_DATA__;
+  if (opts && opts.method === "POST") {
+    if (path.startsWith("/api/session-status")) {
+      const b = JSON.parse(opts.body), key = `ss::${b.plan_date}::${b.slug}`;
+      if (b.status === "planned") localStorage.removeItem(key);
+      else localStorage.setItem(key, b.status);
+      return { ok: true };
+    }
+    if (path.startsWith("/api/sync")) throw new Error("Synchro Garmin indisponible en version statique. Lance l'app complète pour mettre à jour.");
+    return { ok: true };
+  }
+  if (path.startsWith("/api/overview")) return D.overview;
+  if (path.startsWith("/api/coaching")) return D.coaching;
+  if (path.startsWith("/api/gamification")) return D.gamification;
+  if (path.startsWith("/api/load")) return D.load;
+  if (path.startsWith("/api/week")) {
+    const d = new URL(path, "http://x").searchParams.get("d");
+    const mon = _monday(d);
+    let wk = D.weeks.find((w) => w.monday === mon) || D.weeks[0];
+    wk = JSON.parse(JSON.stringify(wk));
+    for (const day of wk.days)
+      for (const s of day.sessions)
+        s.status = localStorage.getItem(`ss::${day.date}::${s.slug}`) || "planned";
+    return wk;
+  }
+  return {};
+}
+
 async function api(path, opts) {
+  if (STATIC) return staticApi(path, opts);
   const r = await fetch(path, opts);
   const data = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(data.error || r.statusText);
@@ -58,6 +98,12 @@ async function renderGarminMini() {
   const o = await getOverview();
   const gm = o.garmin;
   const node = $("#garmin-mini");
+  if (STATIC) {
+    const built = window.__COACH_DATA__.built_at;
+    node.innerHTML = `<div class="gm-row"><span><span class="dot on"></span>Garmin</span><span class="muted">figé</span></div>
+      <div class="small muted">Version statique${built ? ` · ${built.slice(0, 10)}` : ""}. Lance l'app complète pour synchroniser.</div>`;
+    return;
+  }
   node.innerHTML = `
     <div class="gm-row"><span><span class="dot ${gm.configured ? "on" : "off"}"></span>Garmin</span>
       <span class="muted">${gm.last_sync ? "à jour" : "non lié"}</span></div>
