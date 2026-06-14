@@ -34,6 +34,18 @@ Fonctionnalités clés :
 Contraintes respectées : séances de semaine < 2h (sauf course à pied), Le Mix l'hiver,
 préférence course > vélo > natation, 1 semaine d'allègement sur 4.
 
+## Accès rapide (sans rien installer)
+
+- **En ligne** : https://loic2309.github.io/coach-endurance/ (GitHub Pages)
+- **Sur ton ordi** : ouvre `docs/index.html` d'un double-clic — page autonome, fonctionne hors-ligne.
+
+> Cette version statique a les données **figées** à la date du build. Le suivi des séances
+> (fait/sauté) est mémorisé dans ton navigateur. Pour rafraîchir les données après une synchro :
+> `python -m backend.build_static` puis `git push` (GitHub Pages se met à jour tout seul).
+>
+> ⚠️ GitHub Pages sur repo public = données d'entraînement **visibles publiquement** (jamais les
+> identifiants Garmin). Pour du privé : repo privé + Pages (GitHub Pro), ou garde uniquement le local.
+
 ## Installation
 
 ```bash
