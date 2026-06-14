@@ -73,19 +73,19 @@ PHASE_GUIDES = {
     },
     "build": {
         "subtitle": "Force & bloc hivernal — mi-octobre 2026 → février 2027",
-        "summary": "L'hiver et la météo poussent en salle : on en profite pour gagner de la force et de la "
-                   "puissance (Burn + vélo home-trainer), tout en maintenant la course avec une touche de "
-                   "qualité au seuil. C'est la phase où l'on construit la puissance vélo qui fera le sub-5h.",
+        "summary": "Le vélo passe en salle (home-trainer) pour gagner force et puissance, mais la course "
+                   "reste DEHORS — le seuil se court en extérieur. Le travail de vitesse/puissance vient "
+                   "surtout des cours de Burn. C'est la phase où l'on construit la puissance vélo du sub-5h.",
         "objectives": [
             "Augmenter la FTP vélo via le sweet spot et le seuil en salle.",
-            "Maintenir le volume course et introduire du seuil (tapis).",
-            "Développer la force générale au Burn (transférable aux 3 disciplines).",
+            "Maintenir le volume course dehors et introduire du seuil (en extérieur).",
+            "Développer vitesse et puissance via le Burn (explosivité transférable aux 3 disciplines).",
             "Garder un contact technique avec l'eau (1–2 séances/sem).",
         ],
-        "key_sessions": ["Vélo sweet spot 3×10'", "Course seuil 4×6'", "Burn (force)"],
+        "key_sessions": ["Vélo sweet spot 3×10'", "Course seuil 4×6' (extérieur)", "Burn (vitesse & force)"],
         "watch_outs": [
             "Le Burn est intense : ne l'empile pas la veille d'une grosse séance de seuil.",
-            "Sur home-trainer, surveille l'hydratation et la ventilation (on chauffe vite).",
+            "Habille-toi en couches pour le seuil hivernal en extérieur ; échauffe-toi bien avant les fractions.",
         ],
         "metrics": ["FTP vélo (W)", "Allure au seuil course", "Charge d'entraînement Garmin (équilibrée)"],
     },
@@ -130,7 +130,7 @@ PHASE_GUIDES = {
 RACE_STRATEGIES = {
     "20km": {
         "title": "20km de Bruxelles — plan de course",
-        "goal_line": "Cible saine 1h10–1h13 (3:30–3:40/km) · stretch 1h05 (3:15/km)",
+        "goal_line": "Objectif 1h05 (3:15/km) — crédible depuis ton niveau actuel 1h10 (3:30/km)",
         "pacing": [
             "Pars délibérément 3–5 s/km plus lent que ta cible sur les 3 premiers km : l'adrénaline trompe.",
             "Verrouille l'allure cible du km 4 au km 15, en restant relâché (épaules, mâchoire).",

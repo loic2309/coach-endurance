@@ -8,13 +8,13 @@ organisée en 5 sections : **Vue d'ensemble · Mon plan · Cette semaine · Char
 
 ## Objectifs
 
-| Course | Actuel | Objectif réaliste | Objectif stretch | Date |
-|--------|--------|-------------------|------------------|------|
-| 20km de Bruxelles | 1h21 | **1h10–1h13** | 1h05 | ~30 mai 2027 |
+| Course | Actuel | Objectif principal | Stretch | Date |
+|--------|--------|--------------------|---------|------|
+| 20km de Bruxelles | 1h10 | **1h05** (3:15/km) | 1h02 | ~30 mai 2027 |
 | Half-Ironman 70.3 | 5h15 | **sub-5h** | — | ~20 juin 2027 |
 
-> Note de coach : -16 min sur 20km en un an est exceptionnel. La cible saine est 1h10–1h13,
-> avec 1h05 comme horizon 2-3 ans. Le sub-5h sur 70.3 est tout à fait atteignable.
+> Note de coach : avec 1h10 déjà au compteur, viser 1h05 (≈15 s/km de mieux) sur un an de
+> prépa structurée est ambitieux mais crédible. Le sub-5h sur 70.3 est tout à fait atteignable.
 
 ## Périodisation (4 phases)
 

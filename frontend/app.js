@@ -87,8 +87,8 @@ async function viewOverview() {
       <div class="label">🏃 20km de Bruxelles</div>
       <h3>${fmtDate(g.race_20km.date, { day: "2-digit", month: "long", year: "numeric" })}</h3>
       <div class="kv"><span>Actuel</span><b>${hms(g.race_20km.current_min)}</b></div>
-      <div class="kv"><span>Objectif réaliste <span class="badge green">sain</span></span><b>${hms(g.race_20km.goal_realistic_min)}</b></div>
-      <div class="kv"><span>Objectif stretch <span class="badge amber">ambitieux</span></span><b>${hms(g.race_20km.goal_stretch_min)}</b></div>
+      <div class="kv"><span>Objectif principal <span class="badge cyan">crédible</span></span><b>${hms(g.race_20km.goal_realistic_min)}</b></div>
+      <div class="kv"><span>Stretch <span class="badge amber">si tout roule</span></span><b>${hms(g.race_20km.goal_stretch_min)}</b></div>
     </div></div></div>`;
 
   const card70 = `<div class="card glow"><div class="goal-hero">

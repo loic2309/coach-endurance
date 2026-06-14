@@ -30,11 +30,11 @@ class Settings:
     race_20km_date: date = _d("RACE_20KM_DATE", "2027-05-30")
     race_703_date: date = _d("RACE_703_DATE", "2027-06-20")
 
-    goal_20km_realistic_min: int = _i("GOAL_20KM_REALISTIC_MIN", 70)
-    goal_20km_stretch_min: int = _i("GOAL_20KM_STRETCH_MIN", 65)
+    goal_20km_realistic_min: int = _i("GOAL_20KM_REALISTIC_MIN", 65)
+    goal_20km_stretch_min: int = _i("GOAL_20KM_STRETCH_MIN", 62)
     goal_703_min: int = _i("GOAL_703_MIN", 300)
 
-    current_20km_min: int = _i("CURRENT_20KM_MIN", 81)
+    current_20km_min: int = _i("CURRENT_20KM_MIN", 70)
     current_703_min: int = _i("CURRENT_703_MIN", 315)
 
     data_dir: Path = Path(os.getenv("DATA_DIR", str(ROOT / "data")))
