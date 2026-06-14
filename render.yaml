@@ -1,0 +1,26 @@
+# Blueprint Render — déploie l'app en un clic depuis le repo GitHub.
+# Sur https://dashboard.render.com → New → Blueprint → choisis ce repo.
+# Renseigne ensuite les secrets (sync:false) dans le dashboard.
+services:
+  - type: web
+    name: coach-endurance
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/overview
+    envVars:
+      - key: GARMIN_EMAIL
+        sync: false          # à saisir dans le dashboard Render
+      - key: GARMIN_PASSWORD
+        sync: false
+      - key: APP_USER
+        value: coach
+      - key: APP_PASSWORD
+        sync: false          # mot de passe d'accès à TON app (protège tes données)
+      - key: ATHLETE_NAME
+        value: Loic
+      - key: DATA_DIR
+        value: /data
+    disk:
+      name: coach-data
+      mountPath: /data       # SQLite + token Garmin persistants
+      sizeGB: 1

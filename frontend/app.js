@@ -20,6 +20,7 @@ const SPORT_COLOR = { run: "#34d399", bike: "#fbbf24", swim: "#38bdf8", strength
 const cache = {};
 async function getOverview() { return cache.overview ??= await api("/api/overview"); }
 async function getCoaching() { return cache.coaching ??= await api("/api/coaching"); }
+async function getGamification() { return cache.gam ??= await api("/api/gamification"); }
 let currentMonday = null;
 
 // ---------------- Progress ring ----------------
@@ -39,6 +40,7 @@ async function topbar(route) {
     plan: ["Mon plan", "Périodisation sur 12 mois, phase par phase"],
     week: ["Cette semaine", "Tes séances, à cocher au fil de l'eau"],
     load: ["Charge d'entraînement", "Ce que tu as réellement fait (Garmin)"],
+    defis: ["Défis", "Ton niveau, ta série et tes badges"],
     coaching: ["Conseils", "Méthode et stratégie de course"],
   };
   const [t, s] = titles[route] || titles.overview;
@@ -69,7 +71,7 @@ async function doSync() {
   try {
     const r = await api("/api/sync", { method: "POST" });
     msg.textContent = `✅ ${r.imported} activités importées.`;
-    delete cache.overview; await renderGarminMini();
+    delete cache.overview; delete cache.gam; await renderGarminMini();
     if (location.hash.includes("load") || location.hash === "" || location.hash.includes("overview")) render();
   } catch (e) { msg.textContent = "⚠️ " + e.message; }
   finally { const b = $("#sync-btn"); if (b) b.disabled = false; }
@@ -86,9 +88,9 @@ async function viewOverview() {
     <div class="info">
       <div class="label">🏃 20km de Bruxelles</div>
       <h3>${fmtDate(g.race_20km.date, { day: "2-digit", month: "long", year: "numeric" })}</h3>
-      <div class="kv"><span>Actuel</span><b>${hms(g.race_20km.current_min)}</b></div>
-      <div class="kv"><span>Objectif principal <span class="badge cyan">crédible</span></span><b>${hms(g.race_20km.goal_realistic_min)}</b></div>
-      <div class="kv"><span>Stretch <span class="badge amber">si tout roule</span></span><b>${hms(g.race_20km.goal_stretch_min)}</b></div>
+      <div class="kv"><span>PR actuel <span class="badge">Garmin</span></span><b>${hms(g.race_20km.current_min)}</b></div>
+      <div class="kv"><span>Palier 1 an <span class="badge cyan">visé</span></span><b>${hms(g.race_20km.goal_realistic_min)}</b></div>
+      <div class="kv"><span>Rêve <span class="badge amber">2-3 ans</span></span><b>${hms(g.race_20km.goal_stretch_min)}</b></div>
     </div></div></div>`;
 
   const card70 = `<div class="card glow"><div class="goal-hero">
@@ -109,7 +111,7 @@ async function viewOverview() {
       ${pchip("Tempo / allure 20km", z.tempo, true)}${pchip("Seuil", z.threshold)}
       ${pchip("VO2max (~5km)", z.vo2)}
     </div>
-    <p class="small muted" style="margin:14px 0 0">Elles partent de ton niveau actuel (1h10 → 3:30/km) et montent <b>crescendo</b> vers tes allures objectif (1h05) au fil du plan. Le grand chiffre = ce que tu vises <b>maintenant</b>.</p></div>`;
+    <p class="small muted" style="margin:14px 0 0">${p.from_garmin ? `Ancrées sur tes <b>vraies allures Garmin</b> (Z2 réelle ${p.measured_easy})` : "Basées sur ton niveau actuel"} et montant <b>crescendo</b> vers le palier 1 an. Le grand chiffre = ce que tu vises <b>maintenant</b>, la petite ligne = la cible.</p></div>`;
 
   const progress = `<div class="card"><h2 class="with-eyebrow">Avancement du plan</h2>
     <div class="eyebrow">${fmtDate(pp.start)} → ${fmtDate(pp.end)}</div>
@@ -117,10 +119,48 @@ async function viewOverview() {
     <div style="display:flex;justify-content:space-between" class="small muted">
       <span>Semaine ${pp.elapsed_weeks} / ${pp.total_weeks}</span><span>${pp.pct}%</span></div></div>`;
 
+  const gam = await getGamification();
+  const gamStrip = `<div class="card glow gamebar">
+    <div class="lvl"><div class="lvl-badge">Niv.<b>${gam.level}</b></div></div>
+    <div class="gb-main">
+      <div class="gb-top"><span><b>${gam.xp.toLocaleString("fr-FR")}</b> XP</span>
+        <span class="muted small">${gam.xp_into_level}/${gam.xp_for_next} vers niv. ${gam.level + 1}</span></div>
+      <div class="progress-track" style="margin:8px 0 0"><div class="progress-fill" style="width:${gam.level_progress_pct}%"></div></div>
+    </div>
+    <div class="gb-stat"><div class="gb-flame">🔥 ${gam.streak_weeks}</div><span class="muted small">sem. d'affilée</span></div>
+    <div class="gb-stat"><div class="gb-flame">🏆 ${gam.badges_earned}/${gam.badges_total}</div><span class="muted small">badges</span></div>
+  </div>`;
+
   v.innerHTML = `
+    ${gamStrip}
+    <div style="height:16px"></div>
     <div class="grid cols-2">${card20}${card70}</div>
     <div style="height:16px"></div>${progress}
     <div style="height:16px"></div>${paces}`;
+}
+
+async function viewDefis() {
+  const gam = await getGamification();
+  const grid = gam.badges.map((b) => `
+    <div class="card badge-card ${b.earned ? "earned" : "locked"}">
+      <div class="b-ico">${b.icon}</div>
+      <div class="b-info"><h3>${b.title}</h3><p class="muted small">${b.desc}</p>
+        ${b.earned ? '<span class="badge green">obtenu ✓</span>'
+          : `<div class="progress-track" style="margin-top:8px"><div class="progress-fill" style="width:${b.progress * 100}%"></div></div>
+             <span class="faint small">${Math.round(b.progress * 100)}%</span>`}
+      </div></div>`).join("");
+
+  $("#view").innerHTML = `
+    <div class="card glow gamebar">
+      <div class="lvl"><div class="lvl-badge">Niv.<b>${gam.level}</b></div></div>
+      <div class="gb-main"><div class="gb-top"><span><b>${gam.xp.toLocaleString("fr-FR")}</b> XP</span>
+        <span class="muted small">plus que ${gam.xp_for_next - gam.xp_into_level} XP pour le niveau ${gam.level + 1}</span></div>
+        <div class="progress-track" style="margin:8px 0 0"><div class="progress-fill" style="width:${gam.level_progress_pct}%"></div></div></div>
+      <div class="gb-stat"><div class="gb-flame">🔥 ${gam.streak_weeks}</div><span class="muted small">semaines</span></div>
+    </div>
+    <div class="section-title">Badges — ${gam.badges_earned}/${gam.badges_total} obtenus</div>
+    <div class="grid cols-3">${grid}</div>
+    <p class="small muted" style="margin-top:14px">Tu gagnes de l'XP à chaque sortie (durée + distance + dénivelé). Reste régulier pour faire grimper ta série 🔥 et débloquer les badges.</p>`;
 }
 function pchip(k, z, hl) { return `<div class="pace-chip ${hl ? "hl" : ""}"><span class="k">${k}</span><span class="v">${z.now}</span><span class="pgoal">→ ${z.goal}</span></div>`; }
 
@@ -313,7 +353,7 @@ async function viewCoaching() {
 }
 
 // ---------------- Router ----------------
-const ROUTES = { overview: viewOverview, plan: viewPlan, week: () => viewWeek(currentMonday), load: viewLoad, coaching: viewCoaching };
+const ROUTES = { overview: viewOverview, plan: viewPlan, week: () => viewWeek(currentMonday), load: viewLoad, defis: viewDefis, coaching: viewCoaching };
 async function render() {
   closeDrawer();
   const route = (location.hash.replace("#/", "") || "overview");

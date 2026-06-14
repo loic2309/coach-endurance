@@ -274,6 +274,27 @@ a { color: inherit; text-decoration: none; }
 .effort .sport-ico { font-size: 1.6rem; }
 .effort .v { font-size: 1.5rem; font-weight: 900; margin: 6px 0 2px; }
 
+/* Gamification */
+.gamebar { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+.lvl-badge { width: 70px; height: 70px; border-radius: 50%; display: grid; place-content: center; text-align: center;
+  background: conic-gradient(var(--accent), var(--accent-2), var(--accent)); color: #04161a; font-weight: 800; font-size: 0.7rem;
+  box-shadow: 0 4px 16px rgba(34,211,238,0.35); }
+.lvl-badge b { display: block; font-size: 1.5rem; line-height: 1; }
+.gb-main { flex: 1; min-width: 200px; }
+.gb-top { display: flex; justify-content: space-between; align-items: baseline; }
+.gb-top b { font-size: 1.3rem; color: var(--accent); }
+.gb-stat { text-align: center; }
+.gb-flame { font-size: 1.3rem; font-weight: 800; }
+@media (max-width: 560px) { .gamebar { gap: 14px; } .gb-main { order: 3; flex-basis: 100%; } }
+
+.badge-card { display: flex; gap: 14px; align-items: center; }
+.badge-card.locked { opacity: 0.62; }
+.badge-card .b-ico { font-size: 2rem; width: 54px; height: 54px; border-radius: 14px; display: grid; place-items: center;
+  background: var(--surface-2); flex-shrink: 0; }
+.badge-card.earned .b-ico { background: linear-gradient(135deg, rgba(34,211,238,0.25), rgba(52,211,153,0.25)); }
+.badge-card .b-info { min-width: 0; flex: 1; }
+.badge-card h3 { font-size: 0.95rem; }
+
 .empty { color: var(--muted); text-align: center; padding: 30px; font-size: 0.9rem; }
 .loading { color: var(--muted); padding: 40px; text-align: center; }
 .errbar { background: rgba(251,113,133,0.15); border: 1px solid var(--bad); color: #fecdd3; padding: 12px 16px; border-radius: var(--r); margin-bottom: 16px; font-size: 0.88rem; }

@@ -17,41 +17,57 @@ def fmt_pace(sec_per_km: float | None) -> str:
     return f"{m}:{s:02d}/km"
 
 
-def _zones_from_ref(ref: float) -> dict:
-    """Repères d'entrainement (sec/km) dérivés d'une allure de référence 20km."""
+def measured_anchors() -> tuple[float, float, bool]:
+    """Retourne (allure facile, allure seuil/20km) en sec/km, depuis l'analyse Garmin.
+
+    Fallback sur la config si aucune donnée Garmin n'a encore été analysée.
+    """
+    easy = db.get_meta("measured_easy_s")
+    thr = db.get_meta("measured_thr_s")
+    if easy and thr:
+        return float(easy), float(thr), True
+    ref = settings.current_20km_min * 60 / 20
+    return ref + 72, ref, False
+
+
+def _zones2(easy: float, thr: float) -> dict:
+    """Repères (sec/km) interpolés entre l'allure facile et l'allure seuil réelles."""
+    gap = easy - thr
     return {
-        "easy": ref + 75,        # endurance Z2
-        "long": ref + 60,
-        "tempo": ref + 15,       # allure ~20km
-        "threshold": ref,        # seuil ~ allure semi/20km
-        "vo2": ref - 25,         # allure ~5 km
+        "easy": easy,                 # Z2 mesurée
+        "long": easy - 0.18 * gap,
+        "tempo": thr + 0.30 * gap,    # allure ~20km
+        "threshold": thr,             # seuil ~ allure 20km actuelle
+        "vo2": thr - 0.28 * gap,      # allure ~5 km
     }
 
 
 def target_paces() -> dict:
-    """Allures d'entrainement qui montent CRESCENDO du niveau actuel vers l'objectif.
+    """Allures qui montent CRESCENDO depuis tes allures Garmin réelles vers le palier 1 an.
 
-    L'allure de référence interpole entre l'allure 20km actuelle et l'allure objectif
-    en fonction de l'avancement dans le plan : aujourd'hui = niveau actuel, jour de course = objectif.
+    Deux ancres mesurées (facile + seuil) ; on les fait glisser vers les ancres objectif
+    proportionnellement à l'avancement du plan. Aujourd'hui = exactement tes allures réelles.
     """
-    current = settings.current_20km_min * 60 / 20   # sec/km actuels
-    goal = settings.goal_20km_realistic_min * 60 / 20
-    stretch = settings.goal_20km_stretch_min * 60 / 20
+    easy_now, thr_now, from_garmin = measured_anchors()
+    ratio = easy_now / thr_now
 
-    frac = plan_progress()["pct"] / 100             # 0 au début, 1 à la course
-    ref_now = current - (current - goal) * frac     # référence du moment
+    goal_thr = settings.goal_20km_realistic_min * 60 / 20   # palier 1 an
+    goal_easy = goal_thr * ratio                            # facile objectif (même rapport)
 
-    now = _zones_from_ref(ref_now)
-    goal_zones = _zones_from_ref(goal)
-    zones = {
-        k: {"now": fmt_pace(now[k]), "goal": fmt_pace(goal_zones[k])}
-        for k in now
-    }
+    frac = plan_progress()["pct"] / 100
+    cur_easy = easy_now - (easy_now - goal_easy) * frac
+    cur_thr = thr_now - (thr_now - goal_thr) * frac
+
+    now = _zones2(cur_easy, cur_thr)
+    goal = _zones2(goal_easy, goal_thr)
+    zones = {k: {"now": fmt_pace(now[k]), "goal": fmt_pace(goal[k])} for k in now}
+
     return {
-        "current_20km": fmt_pace(current),
-        "goal_20km_realistic": fmt_pace(goal),
-        "goal_20km_stretch": fmt_pace(stretch),
-        "ref_now": fmt_pace(ref_now),
+        "current_20km": fmt_pace(settings.current_20km_min * 60 / 20),
+        "goal_20km_realistic": fmt_pace(goal_thr),
+        "goal_20km_stretch": fmt_pace(settings.goal_20km_stretch_min * 60 / 20),
+        "measured_easy": fmt_pace(easy_now),
+        "from_garmin": from_garmin,
         "progress_pct": round(frac * 100),
         "zones": zones,
     }
@@ -145,7 +161,12 @@ def best_efforts() -> dict:
                 "date": a["activity_date"],
                 "distance_km": round(dist / 1000, 1),
             }
-    # formate
+    # formate selon le sport
     for sp, v in best.items():
-        v["pace"] = fmt_pace(v["pace_s"]) if sp != "swim" else f"{int(v['pace_s']//60)}:{int(v['pace_s']%60):02d}/100m"
+        if sp == "swim":
+            v["pace"] = f"{int(v['pace_s']//60)}:{int(v['pace_s']%60):02d}/100m"
+        elif sp == "bike":
+            v["pace"] = f"{3600 / v['pace_s']:.1f} km/h"  # vitesse plutôt qu'allure
+        else:
+            v["pace"] = fmt_pace(v["pace_s"])
     return best

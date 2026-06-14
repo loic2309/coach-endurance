@@ -4,17 +4,25 @@ Plateforme de coaching personnelle : plan d'entrainement périodisé sur ~12 moi
 synchronisation automatique des données Garmin, conseils de coaching, et dashboard de suivi.
 
 Interface **sombre premium** (style Whoop / Strava), responsive (utilisable au téléphone),
-organisée en 5 sections : **Vue d'ensemble · Mon plan · Cette semaine · Charge · Conseils**.
+organisée en 6 sections : **Vue d'ensemble · Mon plan · Cette semaine · Charge · Défis · Conseils**.
+
+Fonctionnalités clés :
+- 📈 Plan périodisé 12 mois (4 phases, deload 3:1) adapté aux contraintes de l'athlète
+- ⌚ Synchro Garmin + **analyse coach** des allures réelles (`coach_report`)
+- 🎯 Allures d'entraînement **crescendo**, ancrées sur les vraies données Garmin
+- 🏆 **Gamification** : niveau, XP, série hebdomadaire, badges (calculés sur l'historique réel)
+- 🔒 Auth optionnelle pour un déploiement en ligne sécurisé
 
 ## Objectifs
 
-| Course | Actuel | Objectif principal | Stretch | Date |
-|--------|--------|--------------------|---------|------|
-| 20km de Bruxelles | 1h10 | **1h05** (3:15/km) | 1h02 | ~30 mai 2027 |
+| Course | PR actuel (Garmin) | Palier 1 an (visé) | Rêve | Date |
+|--------|--------------------|--------------------|------|------|
+| 20km de Bruxelles | 1h21 (4:04/km) | **1h13** | 1h05 | ~30 mai 2027 |
 | Half-Ironman 70.3 | 5h15 | **sub-5h** | — | ~20 juin 2027 |
 
-> Note de coach : avec 1h10 déjà au compteur, viser 1h05 (≈15 s/km de mieux) sur un an de
-> prépa structurée est ambitieux mais crédible. Le sub-5h sur 70.3 est tout à fait atteignable.
+> Note de coach : l'analyse Garmin montre un PR réel de 1h21 (couru en aisance, donc avec de la
+> marge). Le palier crédible sur un an est ~1h13 ; 1h05 reste le rêve à 2-3 ans. Les allures
+> d'entraînement visent le palier 1 an et montent crescendo depuis les allures Garmin réelles.
 
 ## Périodisation (4 phases)
 
@@ -52,15 +60,29 @@ sur le dashboard (ou `POST /api/sync`). À la première connexion un token est s
 Si tu as la double authentification (MFA) sur Garmin, fais une première connexion en local
 pour générer le token, puis déploie avec le dossier `data/garmin_tokens/`.
 
-## Déploiement (app hébergée)
+## Analyse coach des allures (Garmin)
 
-L'app est un service FastAPI standard. Pour la rendre accessible depuis ton téléphone :
+Un outil analyse ton historique et calibre les allures sur tes vraies données :
 
-- **Railway / Render / Fly.io** : déploie le repo, commande de démarrage
-  `uvicorn backend.main:app --host 0.0.0.0 --port $PORT`, et configure les variables
-  d'environnement (`.env`). Monte un volume persistant sur `DATA_DIR` pour garder SQLite + le token.
+```bash
+python -m backend.coach_report --sync   # synchronise 12 mois puis analyse
+```
+Il calcule ta Z2 réelle, ton meilleur effort, ton volume, et une projection 20km (Riegel).
+Ces repères sont stockés et utilisés par le moteur d'allures (crescendo depuis le réel).
 
-> ⚠️ En hébergé, protège l'accès (auth basique / réseau privé) : l'app contient ta session Garmin.
+## Déploiement (app hébergée, accessible au téléphone)
+
+Le repo contient un **`Dockerfile`** et un **`render.yaml`** (blueprint).
+
+**Render (le plus simple) :**
+1. Sur [dashboard.render.com](https://dashboard.render.com) → **New → Blueprint** → choisis ce repo.
+2. Render lit `render.yaml` (service Docker + disque persistant `/data`).
+3. Renseigne les secrets dans le dashboard : `GARMIN_EMAIL`, `GARMIN_PASSWORD`, et **`APP_PASSWORD`** (le mot de passe d'accès à ton app).
+4. Déploie → ton app est en ligne sur une URL `https://…onrender.com`, accessible au téléphone.
+
+> 🔒 **Sécurité** : dès que `APP_PASSWORD` est défini, l'app exige un login HTTP (user `APP_USER`,
+> défaut `coach`). Les identifiants Garmin ne sont **jamais** dans le repo — uniquement en variables
+> d'environnement côté hébergeur. Le `.env` local est gitignored.
 
 ## API
 
@@ -71,6 +93,7 @@ L'app est un service FastAPI standard. Pour la rendre accessible depuis ton tél
 | GET | `/api/week?d=AAAA-MM-JJ` | semaine contenant la date (avec statut des séances) |
 | GET | `/api/load?weeks=12` | charge réelle par sport (Garmin) |
 | GET | `/api/coaching` | principes, guides de phase, stratégies de course |
+| GET | `/api/gamification` | niveau, XP, série, badges |
 | POST | `/api/sync` | importe les activités Garmin |
 | POST | `/api/session-status` | marque une séance fait/sauté |
 

@@ -1,19 +1,20 @@
 """Application FastAPI : API de coaching + service du dashboard."""
 from __future__ import annotations
 
+import secrets
 from datetime import date
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import analytics, coaching, db, garmin_sync, plan_engine
+from . import analytics, coaching, db, gamification, garmin_sync, plan_engine
 from .config import settings
 
-app = FastAPI(title="Coach perso — 20km & 70.3")
+app = FastAPI(title="Coach Endurance — 20km & 70.3")
 
 FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
 
@@ -21,6 +22,26 @@ FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
 @app.on_event("startup")
 def _startup() -> None:
     db.init_db()
+
+
+@app.middleware("http")
+async def basic_auth(request: Request, call_next):
+    """Auth HTTP basique, activée uniquement si APP_PASSWORD est défini (déploiement public)."""
+    if settings.app_password:
+        header = request.headers.get("authorization", "")
+        ok = False
+        if header.startswith("Basic "):
+            import base64
+            try:
+                user, _, pwd = base64.b64decode(header[6:]).decode().partition(":")
+                ok = secrets.compare_digest(user, settings.app_user) and \
+                     secrets.compare_digest(pwd, settings.app_password)
+            except Exception:
+                ok = False
+        if not ok:
+            return Response("Auth requise", status_code=401,
+                            headers={"WWW-Authenticate": 'Basic realm="Coach Endurance"'})
+    return await call_next(request)
 
 
 # ---------------------------------------------------------------- API
@@ -39,6 +60,11 @@ def overview():
 @app.get("/api/coaching")
 def coaching_content():
     return coaching.coaching_payload()
+
+
+@app.get("/api/gamification")
+def gamification_state():
+    return gamification.state()
 
 
 @app.get("/api/plan")

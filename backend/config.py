@@ -27,14 +27,19 @@ class Settings:
     garmin_email: str | None = os.getenv("GARMIN_EMAIL")
     garmin_password: str | None = os.getenv("GARMIN_PASSWORD")
 
+    # Auth de l'app (activée seulement si APP_PASSWORD est défini — utile en hébergé)
+    app_user: str = os.getenv("APP_USER", "coach")
+    app_password: str | None = os.getenv("APP_PASSWORD")
+
     race_20km_date: date = _d("RACE_20KM_DATE", "2027-05-30")
     race_703_date: date = _d("RACE_703_DATE", "2027-06-20")
 
-    goal_20km_realistic_min: int = _i("GOAL_20KM_REALISTIC_MIN", 65)
-    goal_20km_stretch_min: int = _i("GOAL_20KM_STRETCH_MIN", 62)
+    # realistic = palier crédible sur 1 an (cible des allures) ; stretch = le rêve 1h05
+    goal_20km_realistic_min: int = _i("GOAL_20KM_REALISTIC_MIN", 73)
+    goal_20km_stretch_min: int = _i("GOAL_20KM_STRETCH_MIN", 65)
     goal_703_min: int = _i("GOAL_703_MIN", 300)
 
-    current_20km_min: int = _i("CURRENT_20KM_MIN", 70)
+    current_20km_min: int = _i("CURRENT_20KM_MIN", 81)
     current_703_min: int = _i("CURRENT_703_MIN", 315)
 
     data_dir: Path = Path(os.getenv("DATA_DIR", str(ROOT / "data")))
