@@ -34,9 +34,9 @@ class Settings:
     race_20km_date: date = _d("RACE_20KM_DATE", "2027-05-30")
     race_703_date: date = _d("RACE_703_DATE", "2027-06-20")
 
-    # realistic = palier crédible sur 1 an (cible des allures) ; stretch = le rêve 1h05
-    goal_20km_realistic_min: int = _i("GOAL_20KM_REALISTIC_MIN", 73)
-    goal_20km_stretch_min: int = _i("GOAL_20KM_STRETCH_MIN", 65)
+    # realistic = LE but visé par les allures (1h05) ; stretch = si tout claque (1h02)
+    goal_20km_realistic_min: int = _i("GOAL_20KM_REALISTIC_MIN", 65)
+    goal_20km_stretch_min: int = _i("GOAL_20KM_STRETCH_MIN", 62)
     goal_703_min: int = _i("GOAL_703_MIN", 300)
 
     current_20km_min: int = _i("CURRENT_20KM_MIN", 81)

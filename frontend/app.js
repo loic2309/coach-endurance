@@ -89,8 +89,8 @@ async function viewOverview() {
       <div class="label">🏃 20km de Bruxelles</div>
       <h3>${fmtDate(g.race_20km.date, { day: "2-digit", month: "long", year: "numeric" })}</h3>
       <div class="kv"><span>PR actuel <span class="badge">Garmin</span></span><b>${hms(g.race_20km.current_min)}</b></div>
-      <div class="kv"><span>Palier 1 an <span class="badge cyan">visé</span></span><b>${hms(g.race_20km.goal_realistic_min)}</b></div>
-      <div class="kv"><span>Rêve <span class="badge amber">2-3 ans</span></span><b>${hms(g.race_20km.goal_stretch_min)}</b></div>
+      <div class="kv"><span>🎯 Objectif <span class="badge cyan">on y va</span></span><b>${hms(g.race_20km.goal_realistic_min)}</b></div>
+      <div class="kv"><span>Stretch <span class="badge amber">si ça claque</span></span><b>${hms(g.race_20km.goal_stretch_min)}</b></div>
     </div></div></div>`;
 
   const card70 = `<div class="card glow"><div class="goal-hero">
@@ -111,7 +111,7 @@ async function viewOverview() {
       ${pchip("Tempo / allure 20km", z.tempo, true)}${pchip("Seuil", z.threshold)}
       ${pchip("VO2max (~5km)", z.vo2)}
     </div>
-    <p class="small muted" style="margin:14px 0 0">${p.from_garmin ? `Ancrées sur tes <b>vraies allures Garmin</b> (Z2 réelle ${p.measured_easy})` : "Basées sur ton niveau actuel"} et montant <b>crescendo</b> vers le palier 1 an. Le grand chiffre = ce que tu vises <b>maintenant</b>, la petite ligne = la cible.</p></div>`;
+    <p class="small muted" style="margin:14px 0 0">${p.from_garmin ? `Ancrées sur tes <b>vraies allures Garmin</b> (Z2 réelle ${p.measured_easy})` : "Basées sur ton niveau actuel"} et montant <b>crescendo</b> vers tes allures objectif <b>1h05</b>. Le grand chiffre = ce que tu vises <b>maintenant</b>, la petite ligne = la cible 1h05.</p></div>`;
 
   const progress = `<div class="card"><h2 class="with-eyebrow">Avancement du plan</h2>
     <div class="eyebrow">${fmtDate(pp.start)} → ${fmtDate(pp.end)}</div>

@@ -130,7 +130,7 @@ PHASE_GUIDES = {
 RACE_STRATEGIES = {
     "20km": {
         "title": "20km de Bruxelles — plan de course",
-        "goal_line": "Objectif 1h05 (3:15/km) — crédible depuis ton niveau actuel 1h10 (3:30/km)",
+        "goal_line": "Objectif 1h05 (3:15/km) — ton 1h21 était couru en aisance, la marge est là : on va la chercher",
         "pacing": [
             "Pars délibérément 3–5 s/km plus lent que ta cible sur les 3 premiers km : l'adrénaline trompe.",
             "Verrouille l'allure cible du km 4 au km 15, en restant relâché (épaules, mâchoire).",
