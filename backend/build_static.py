@@ -12,7 +12,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from . import analytics, coaching, gamification, garmin_sync, plan_engine, db
+from . import analytics, coaching, fitness, gamification, garmin_sync, plan_engine, db
 from .config import ROOT
 
 
@@ -29,6 +29,7 @@ def build_data() -> dict:
         },
         "coaching": coaching.coaching_payload(),
         "gamification": gamification.state(),
+        "progression": fitness.state(),
         "load": {"weekly": analytics.weekly_load(12)},
         "weeks": plan_engine.full_plan(),
     }

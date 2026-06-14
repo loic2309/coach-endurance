@@ -7,11 +7,18 @@ const el = (html) => { const t = document.createElement("template"); t.innerHTML
 // on sert tout depuis window.__COACH_DATA__ et on persiste les séances via localStorage.
 const STATIC = typeof window !== "undefined" && !!window.__COACH_DATA__;
 
-function _monday(iso) {
-  const d = new Date((iso || new Date().toISOString().slice(0, 10)) + "T00:00:00");
-  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-  return d.toISOString().slice(0, 10);
+// Dates manipulées en UTC pour éviter tout décalage de fuseau horaire.
+function _ymd(d) {
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
 }
+function _parseYMD(iso) { const [y, m, d] = iso.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d)); }
+function todayISO() { const t = new Date(); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`; }
+function _monday(iso) {
+  const d = _parseYMD(iso || todayISO());
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return _ymd(d);
+}
+function addDaysISO(iso, n) { const d = _parseYMD(iso); d.setUTCDate(d.getUTCDate() + n); return _ymd(d); }
 
 function staticApi(path, opts) {
   const D = window.__COACH_DATA__;
@@ -28,6 +35,7 @@ function staticApi(path, opts) {
   if (path.startsWith("/api/overview")) return D.overview;
   if (path.startsWith("/api/coaching")) return D.coaching;
   if (path.startsWith("/api/gamification")) return D.gamification;
+  if (path.startsWith("/api/progression")) return D.progression;
   if (path.startsWith("/api/load")) return D.load;
   if (path.startsWith("/api/week")) {
     const d = new URL(path, "http://x").searchParams.get("d");
@@ -61,6 +69,7 @@ const cache = {};
 async function getOverview() { return cache.overview ??= await api("/api/overview"); }
 async function getCoaching() { return cache.coaching ??= await api("/api/coaching"); }
 async function getGamification() { return cache.gam ??= await api("/api/gamification"); }
+async function getProgression() { return cache.prog ??= await api("/api/progression"); }
 let currentMonday = null;
 
 // ---------------- Progress ring ----------------
@@ -79,7 +88,7 @@ async function topbar(route) {
     overview: ["Vue d'ensemble", "Ta progression vers le 20km et le 70.3"],
     plan: ["Mon plan", "Périodisation sur 12 mois, phase par phase"],
     week: ["Cette semaine", "Tes séances, à cocher au fil de l'eau"],
-    load: ["Charge d'entraînement", "Ce que tu as réellement fait (Garmin)"],
+    progression: ["Progression", "Forme, prédictions de temps et progrès réels"],
     defis: ["Défis", "Ton niveau, ta série et tes badges"],
     coaching: ["Conseils", "Méthode et stratégie de course"],
   };
@@ -249,7 +258,7 @@ async function viewWeek(dateIso) {
   const wk = await api("/api/week" + q);
   currentMonday = wk.monday;
   weekData = wk;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
 
   const ph = wk.phase;
   const days = wk.days.map((day) => {
@@ -326,15 +335,65 @@ function openDrawer(planDate, idx) {
 function closeDrawer() { $("#drawer").classList.remove("open"); $("#drawer-backdrop").classList.remove("open"); }
 $("#drawer-backdrop").onclick = closeDrawer;
 
-function shiftWeek(delta) {
-  const d = new Date(currentMonday + "T00:00:00"); d.setDate(d.getDate() + delta);
-  viewWeek(d.toISOString().slice(0, 10));
+function shiftWeek(delta) { viewWeek(addDaysISO(currentMonday, delta)); }
+
+function _metric(label, val, color, sub) {
+  return `<div class="card metric-card"><div class="mc-label">${label}</div>
+    <div class="mc-val" style="color:${color}">${val}</div><div class="mc-sub">${sub}</div></div>`;
+}
+function _fmtGap(sec) {
+  if (sec == null) return "";
+  const m = Math.round(Math.abs(sec) / 60);
+  return sec > 0 ? `<span class="gap pos">+${m} min vs objectif</span>` : `<span class="gap neg">objectif atteint ! −${m} min</span>`;
+}
+function _predBox(title, txt, goalLine, gap, parts) {
+  return `<div class="card pred-card">
+    <div class="pred-title">${title}</div>
+    <div class="pred-time">${txt}</div>
+    ${goalLine ? `<div class="pred-goal">${goalLine}</div>` : ""}
+    ${gap || ""}
+    ${parts ? `<div class="pred-parts">🏊 ${parts.swim} · 🚴 ${parts.bike} · 🏃 ${parts.run}</div>` : ""}
+  </div>`;
 }
 
-async function viewLoad() {
-  const o = await getOverview();
-  const be = o.best_efforts;
-  const hasEfforts = Object.keys(be).length > 0;
+async function viewProgression() {
+  const [o, prog] = await Promise.all([getOverview(), getProgression()]);
+  const f = prog.form, eff = prog.efficiency, pr = prog.predictions;
+  const g = o.goals, be = o.best_efforts;
+
+  const fColor = { fresh: "#34d399", optimal: "#22d3ee", loaded: "#fb7185" }[f.status] || "#22d3ee";
+  const trendTxt = f.fitness_trend > 0 ? `📈 +${f.fitness_trend} (4 sem)` : f.fitness_trend < 0 ? `📉 ${f.fitness_trend} (4 sem)` : "stable";
+  const formCard = f.available ? `
+    <div class="card"><h2 class="with-eyebrow">Forme du moment</h2>
+      <div class="eyebrow">${f.status_label}</div>
+      <div class="grid cols-3" style="gap:12px;margin-bottom:6px">
+        ${_metric("Forme (TSB)", f.form, fColor, "fraîcheur · élevé = prêt à performer")}
+        ${_metric("Fitness (CTL)", f.fitness, "#22d3ee", "charge chronique · " + trendTxt)}
+        ${_metric("Fatigue (ATL)", f.fatigue, "#fb7185", "charge des 7 derniers jours")}
+      </div>
+      <canvas id="ctlChart" height="80"></canvas>
+      <p class="small muted" style="margin:12px 0 0">La <b>Forme</b> monte quand tu récupères, baisse quand tu charges. La <b>Fitness</b> qui grimpe = tu construis ton moteur.</p>
+    </div>` : "";
+
+  const goal20 = g.race_20km.goal_realistic_min * 60, goal703 = g.race_703.goal_min * 60;
+  const predCard = pr.available ? `
+    <div class="card"><h2 class="with-eyebrow">Prédictions de temps</h2>
+      <div class="eyebrow">estimées depuis ton meilleur effort ${pr.based_on.recent ? "récent" : ""} (${pr.based_on.pace}, ${pr.based_on.km} km)</div>
+      <div class="grid cols-3" style="gap:12px">
+        ${_predBox("🏃 20km", pr.pred_20km.txt, "objectif 1h05", _fmtGap(pr.pred_20km.sec - goal20))}
+        ${_predBox("🏃 Semi (21,1 km)", pr.pred_half.txt, "repère d'allure", "")}
+        ${_predBox("🏊🚴🏃 Half-Ironman 70.3", pr.pred_703.txt, "objectif sub-5h", _fmtGap(pr.pred_703.sec - goal703), pr.pred_703.parts)}
+      </div>
+      <p class="small muted" style="margin:12px 0 0">Projections (Riegel) à ton niveau actuel — l'écart à l'objectif, c'est ce que le plan va combler. Le 70.3 suppose ta natation + vélo actuels.</p>
+    </div>` : "";
+
+  const efCard = eff.available ? `
+    <div class="card"><h2 class="with-eyebrow">Efficacité aérobie</h2>
+      <div class="eyebrow">${eff.verdict}</div>
+      <canvas id="efChart" height="90"></canvas>
+      <p class="small muted" style="margin:12px 0 0">Vitesse par battement de cœur (sorties faciles). Quand la courbe <b>monte</b>, tu cours plus vite à FC égale : le vrai signe que tu progresses.</p>
+    </div>` : "";
+
   const effortCards = ["run", "bike", "swim"].map((sp) => {
     const e = be[sp]; const ico = { run: "🏃", bike: "🚴", swim: "🏊" }[sp];
     return `<div class="card effort"><div class="sport-ico">${ico}</div>
@@ -344,30 +403,46 @@ async function viewLoad() {
   }).join("");
 
   $("#view").innerHTML = `
-    <div class="card"><h2>Charge des 12 dernières semaines</h2>
-      <canvas id="loadChart" height="120"></canvas>
-      <p class="small muted" style="margin:14px 0 0">Minutes par sport. Synchronise Garmin pour remplir ce graphe.</p></div>
+    ${formCard}${formCard ? '<div style="height:16px"></div>' : ""}
+    ${predCard}${predCard ? '<div style="height:16px"></div>' : ""}
+    ${efCard}
+    <div class="section-title">Charge des 12 dernières semaines</div>
+    <div class="card"><canvas id="loadChart" height="110"></canvas></div>
     <div class="section-title">Meilleures allures récentes</div>
-    <div class="grid cols-3">${effortCards}</div>
-    ${hasEfforts ? "" : '<p class="empty">Connecte Garmin et synchronise pour voir tes meilleures allures et ta charge réelle.</p>'}`;
+    <div class="grid cols-3">${effortCards}</div>`;
 
+  if (f.available) drawLineChart("ctlChart", f.weekly.map((w) => w.label), f.weekly.map((w) => w.ctl), "#22d3ee");
+  if (eff.available) drawLineChart("efChart", eff.series.map((s) => s.month), eff.series.map((s) => s.ef), "#34d399");
+  drawLoadChart();
+}
+
+function drawLineChart(id, labels, data, color) {
+  const ctx = $("#" + id); if (!ctx) return;
+  new Chart(ctx, {
+    type: "line",
+    data: { labels, datasets: [{ data, borderColor: color, backgroundColor: color + "22",
+      fill: true, tension: 0.35, pointRadius: 3, borderWidth: 2 }] },
+    options: { responsive: true, plugins: { legend: { display: false } },
+      scales: { x: { grid: { display: false }, ticks: { color: "#8b97a8" } },
+        y: { grid: { color: "rgba(255,255,255,0.05)" }, ticks: { color: "#8b97a8" } } } },
+  });
+}
+
+async function drawLoadChart() {
   const { weekly } = await api("/api/load?weeks=12");
   const sports = ["run", "bike", "swim", "strength"];
   const datasets = sports.map((sp) => ({
     label: SPORT_LABEL[sp], backgroundColor: SPORT_COLOR[sp], borderRadius: 4,
     data: weekly.map((w) => w.by_sport_min[sp] || 0),
   }));
-  new Chart($("#loadChart"), {
+  const ctx = $("#loadChart"); if (!ctx) return;
+  new Chart(ctx, {
     type: "bar",
     data: { labels: weekly.map((w) => w.label), datasets },
-    options: {
-      responsive: true,
-      scales: {
-        x: { stacked: true, grid: { display: false }, ticks: { color: "#8b97a8" } },
-        y: { stacked: true, grid: { color: "rgba(255,255,255,0.05)" }, ticks: { color: "#8b97a8" } },
-      },
-      plugins: { legend: { labels: { color: "#eef2f7", usePointStyle: true, pointStyle: "rectRounded" } } },
-    },
+    options: { responsive: true,
+      scales: { x: { stacked: true, grid: { display: false }, ticks: { color: "#8b97a8" } },
+        y: { stacked: true, grid: { color: "rgba(255,255,255,0.05)" }, ticks: { color: "#8b97a8" } } },
+      plugins: { legend: { labels: { color: "#eef2f7", usePointStyle: true, pointStyle: "rectRounded" } } } },
   });
 }
 
@@ -399,7 +474,7 @@ async function viewCoaching() {
 }
 
 // ---------------- Router ----------------
-const ROUTES = { overview: viewOverview, plan: viewPlan, week: () => viewWeek(currentMonday), load: viewLoad, defis: viewDefis, coaching: viewCoaching };
+const ROUTES = { overview: viewOverview, plan: viewPlan, week: () => viewWeek(currentMonday), progression: viewProgression, defis: viewDefis, coaching: viewCoaching };
 async function render() {
   closeDrawer();
   const route = (location.hash.replace("#/", "") || "overview");
