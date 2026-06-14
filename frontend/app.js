@@ -101,13 +101,15 @@ async function viewOverview() {
       <div class="kv"><span>Gain clé</span><b>Vélo + transitions</b></div>
     </div></div></div>`;
 
-  const paces = `<div class="card"><h2>Allures cibles 🎯</h2>
+  const z = p.zones;
+  const paces = `<div class="card"><h2 class="with-eyebrow">Allures d'entraînement 🎯</h2>
+    <div class="eyebrow">Aujourd'hui → objectif · montée progressive (avancement ${p.progress_pct}%)</div>
     <div class="paces">
-      ${pchip("Récup / Easy", p.easy)}${pchip("Sortie longue", p.long)}
-      ${pchip("Tempo / allure 20km", p.tempo, true)}${pchip("Seuil", p.threshold)}
-      ${pchip("VO2max (~5km)", p.vo2)}${pchip("Objectif 20km", p.goal_20km_realistic, true)}
+      ${pchip("Récup / Easy", z.easy)}${pchip("Sortie longue", z.long)}
+      ${pchip("Tempo / allure 20km", z.tempo, true)}${pchip("Seuil", z.threshold)}
+      ${pchip("VO2max (~5km)", z.vo2)}
     </div>
-    <p class="small muted" style="margin:14px 0 0">Allures dérivées de l'objectif 20km réaliste. Le seuil ≈ ton allure de course 20km.</p></div>`;
+    <p class="small muted" style="margin:14px 0 0">Elles partent de ton niveau actuel (1h10 → 3:30/km) et montent <b>crescendo</b> vers tes allures objectif (1h05) au fil du plan. Le grand chiffre = ce que tu vises <b>maintenant</b>.</p></div>`;
 
   const progress = `<div class="card"><h2 class="with-eyebrow">Avancement du plan</h2>
     <div class="eyebrow">${fmtDate(pp.start)} → ${fmtDate(pp.end)}</div>
@@ -120,7 +122,7 @@ async function viewOverview() {
     <div style="height:16px"></div>${progress}
     <div style="height:16px"></div>${paces}`;
 }
-function pchip(k, val, hl) { return `<div class="pace-chip ${hl ? "hl" : ""}"><span class="k">${k}</span><span class="v">${val}</span></div>`; }
+function pchip(k, z, hl) { return `<div class="pace-chip ${hl ? "hl" : ""}"><span class="k">${k}</span><span class="v">${z.now}</span><span class="pgoal">→ ${z.goal}</span></div>`; }
 
 async function viewPlan() {
   const c = await getCoaching();

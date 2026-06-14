@@ -157,6 +157,8 @@ a { color: inherit; text-decoration: none; }
 .pace-chip { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r); padding: 13px 12px; text-align: center; }
 .pace-chip .k { display: block; font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; margin-bottom: 6px; }
 .pace-chip .v { font-size: 1.18rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.pace-chip .pgoal { display: block; font-size: 0.68rem; color: var(--faint); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.pace-chip.hl .pgoal { color: var(--accent); opacity: 0.8; }
 .pace-chip.hl { background: linear-gradient(160deg, rgba(34,211,238,0.16), var(--surface-2)); border-color: var(--accent); }
 .pace-chip.hl .v { color: var(--accent); }
 

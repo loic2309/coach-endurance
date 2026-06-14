@@ -17,21 +17,43 @@ def fmt_pace(sec_per_km: float | None) -> str:
     return f"{m}:{s:02d}/km"
 
 
+def _zones_from_ref(ref: float) -> dict:
+    """Repères d'entrainement (sec/km) dérivés d'une allure de référence 20km."""
+    return {
+        "easy": ref + 75,        # endurance Z2
+        "long": ref + 60,
+        "tempo": ref + 15,       # allure ~20km
+        "threshold": ref,        # seuil ~ allure semi/20km
+        "vo2": ref - 25,         # allure ~5 km
+    }
+
+
 def target_paces() -> dict:
-    """Allures clés dérivées des objectifs 20km."""
-    realistic = settings.goal_20km_realistic_min * 60 / 20  # sec/km
+    """Allures d'entrainement qui montent CRESCENDO du niveau actuel vers l'objectif.
+
+    L'allure de référence interpole entre l'allure 20km actuelle et l'allure objectif
+    en fonction de l'avancement dans le plan : aujourd'hui = niveau actuel, jour de course = objectif.
+    """
+    current = settings.current_20km_min * 60 / 20   # sec/km actuels
+    goal = settings.goal_20km_realistic_min * 60 / 20
     stretch = settings.goal_20km_stretch_min * 60 / 20
-    current = settings.current_20km_min * 60 / 20
+
+    frac = plan_progress()["pct"] / 100             # 0 au début, 1 à la course
+    ref_now = current - (current - goal) * frac     # référence du moment
+
+    now = _zones_from_ref(ref_now)
+    goal_zones = _zones_from_ref(goal)
+    zones = {
+        k: {"now": fmt_pace(now[k]), "goal": fmt_pace(goal_zones[k])}
+        for k in now
+    }
     return {
         "current_20km": fmt_pace(current),
-        "goal_20km_realistic": fmt_pace(realistic),
+        "goal_20km_realistic": fmt_pace(goal),
         "goal_20km_stretch": fmt_pace(stretch),
-        # Repères d'entrainement (approximations classiques à partir de l'allure 20km cible réaliste)
-        "easy": fmt_pace(realistic + 75),       # endurance Z2
-        "long": fmt_pace(realistic + 60),
-        "tempo": fmt_pace(realistic + 15),      # allure 20km objectif ~= tempo
-        "threshold": fmt_pace(realistic),       # seuil ~ allure semi/20km
-        "vo2": fmt_pace(realistic - 25),        # allure ~5 km
+        "ref_now": fmt_pace(ref_now),
+        "progress_pct": round(frac * 100),
+        "zones": zones,
     }
 
 
