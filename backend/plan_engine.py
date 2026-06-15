@@ -100,60 +100,163 @@ def is_deload(week_index: int) -> bool:
 # Les durées sont des durées "semaine normale" ; le deload applique 0.7x.
 # ---------------------------------------------------------------------------
 
-def _base_week() -> dict[int, list[Session]]:
+def _pick(opts: list[Session], i: int) -> Session:
+    """Choisit une variante selon l'index de semaine → casse la répétitivité."""
+    return opts[i % len(opts)]
+
+
+# Variantes par créneau (on tourne d'une semaine à l'autre). Slug stable par créneau.
+_VAR = {
+    # ---- BASE ----
+    "base-q": [  # mardi : qualité légère course
+        Session("run-easy", "run", "easy", "Footing + lignes", 55, "Z2 conversationnel + 6×20\" lignes en accélération (relâché, pas en force).", "Z2"),
+        Session("run-easy", "run", "tempo", "Footing + fartlek", 55, "Z2 puis 8×1' soutenu / 1' récup. Jeu d'allures au feeling, ludique.", "Z3"),
+        Session("run-easy", "run", "tempo", "Footing + côtes", 55, "Z2 puis 8×30\" en côte (force/puissance), retour en trottinant. Gainage des appuis.", "Z4"),
+        Session("run-easy", "run", "easy", "Footing progressif", 55, "Z2 qui accélère doucement : les 10 dernières minutes en allure tempo. Finir frais.", "Z2-Z3"),
+    ],
+    "base-swim": [
+        Session("swim-tech", "swim", "technique", "Natation — glisse & appuis", 45, "Éducatifs rattrapé/poings fermés, 8×50m focus glisse. La technique avant le volume.", "Z2"),
+        Session("swim-tech", "swim", "technique", "Natation — battements & gainage", 45, "Battements avec planche, 10×50m, focus alignement et jambes. Respiration tous les 3.", "Z2"),
+        Session("swim-tech", "swim", "technique", "Natation — respiration bilatérale", 45, "Éducatifs respiration, 8×75m souple en respirant des 2 côtés. Confort aquatique.", "Z2"),
+        Session("swim-tech", "swim", "technique", "Natation — appui/catch (pull)", 45, "Pull-buoy + plaquettes légères, 8×50m focus prise d'appui avant. Sens de l'eau.", "Z2"),
+    ],
+    "base-tempo": [
+        Session("run-tempo", "run", "tempo", "Course tempo continu", 50, "20' Z2 + 15' allure tempo (confortablement dur) + 15' retour au calme.", "Z3"),
+        Session("run-tempo", "run", "tempo", "Course tempo fractionné", 50, "Échauff. + 3×6' tempo, récup 2'. Plus facile à tenir, même bénéfice.", "Z3"),
+        Session("run-tempo", "run", "tempo", "Course 2×10' cruise", 50, "Échauff. + 2×10' à allure seuil douce, récup 3'. Habitue le corps à durer.", "Z3-Z4"),
+        Session("run-tempo", "run", "tempo", "Course progressive", 50, "Négative split : démarre Z2 et finis en tempo sur les 12 dernières minutes.", "Z2-Z3"),
+    ],
+    "base-bike": [
+        Session("bike-endu", "bike", "easy", "Vélo endurance", 75, "Z2 régulier, cadence 85–95. Travail de l'aisance et de la position.", "Z2"),
+        Session("bike-endu", "bike", "easy", "Vélo endurance vallonné", 75, "Z2 sur parcours vallonné, monte en souplesse. Renforce sans casser.", "Z2"),
+        Session("bike-endu", "bike", "easy", "Vélo cadence", 75, "Z2 + 3×5' à cadence élevée (100+ rpm). Fluidité du coup de pédale.", "Z2"),
+        Session("bike-endu", "bike", "tempo", "Vélo force", 75, "Z2 + 4×4' gros braquet en côte à basse cadence (force). Récup en roulant.", "Z3"),
+    ],
+    "base-long": [
+        Session("run-long", "run", "long", "Sortie longue Z2", 90, "Z2 strict, allonge +5–10' vs la dernière. Le pilier de la base aérobie.", "Z2"),
+        Session("run-long", "run", "long", "Longue + lignes", 90, "Z2 puis 5×20\" lignes relâchées en fin de sortie. Garde du jus de jambes.", "Z2"),
+        Session("run-long", "run", "long", "Longue progressive", 90, "Z2 et finis les 15 dernières minutes en allure tempo (sous fatigue).", "Z2-Z3"),
+        Session("run-long", "run", "long", "Longue vallonnée", 90, "Z2 sur parcours avec du relief. Renforce les jambes en douceur.", "Z2"),
+    ],
+    "base-bikelong": [
+        Session("bike-long", "bike", "long", "Vélo long Z2", 105, "Z2, fluide. Endurance fondamentale et économie.", "Z2"),
+        Session("bike-long", "bike", "long", "Vélo long + brick", 105, "Z2 puis enchaîne 15' de course juste après (brick découverte 70.3).", "Z2"),
+        Session("bike-long", "bike", "long", "Vélo long vallonné", 105, "Z2 sur du relief, gère l'effort dans les bosses. Endurance + force.", "Z2"),
+        Session("bike-long", "bike", "tempo", "Vélo long + tempo", 105, "Z2 avec 3×8' en tempo au milieu, récup 5'. Premier travail de soutien.", "Z3"),
+    ],
+    # ---- BUILD ----
+    "build-burn": [
+        Session("burn", "strength", "burn", "Le Mix — Burn (force)", 60, "Cours Burn orienté force : squats, fentes, tirage. Base de puissance triathlon.", "Z4"),
+        Session("burn", "strength", "burn", "Le Mix — Burn (pliométrie)", 60, "Burn explosif : sauts, bondissements, gainage dynamique. Vitesse & réactivité.", "Z4"),
+        Session("burn", "strength", "burn", "Le Mix — Burn (circuit cardio)", 60, "Burn cardio-renfo en circuit. Tape dans le seuil tout en renforçant.", "Z4"),
+        Session("burn", "strength", "burn", "Le Mix — Burn (puissance)", 60, "Burn charges + vitesse d'exécution. Recrutement musculaire pour la vitesse pure.", "Z4"),
+    ],
+    "build-bike": [
+        Session("bike-ss", "bike", "sweetspot", "Vélo — Sweet spot 3×10'", 60, "Échauff. 15' + 3×10' à 88–93% FTP, récup 4'. Construit ta puissance.", "Z3"),
+        Session("bike-ss", "bike", "sweetspot", "Vélo — Sweet spot 2×20'", 60, "Échauff. + 2×20' à 88–92% FTP, récup 6'. Endurance de puissance.", "Z3"),
+        Session("bike-ss", "bike", "threshold", "Vélo — Over-unders", 60, "4×(3' à 95% + 1' à 105% FTP), récup 4'. Tolérance au seuil.", "Z4"),
+        Session("bike-ss", "bike", "threshold", "Vélo — Seuil 4×8'", 60, "Échauff. + 4×8' à 95–100% FTP, récup 4'. Monte ta FTP.", "Z4"),
+    ],
+    "build-thr": [
+        Session("run-thr", "run", "threshold", "Course seuil 4×6'", 55, "Échauff. 15' + 4×6' au seuil (allure ~semi) DEHORS, récup 90\". Bien s'échauffer par froid.", "Z4"),
+        Session("run-thr", "run", "threshold", "Course seuil 5×5'", 55, "Échauff. + 5×5' au seuil, récup 75\". Volume de qualité au seuil.", "Z4"),
+        Session("run-thr", "run", "threshold", "Course seuil 3×10'", 55, "Échauff. + 3×10' légèrement sous le seuil, récup 2'30. Endurance de seuil.", "Z4"),
+        Session("run-thr", "run", "threshold", "Course cruise 6×4'", 55, "Échauff. + 6×4' au seuil, récup 1'. Densité d'allure soutenue.", "Z4"),
+    ],
+    "build-swim": [
+        Session("swim-css", "swim", "technique", "Natation — technique + CSS", 45, "Éducatifs puis 6×100m à allure CSS (seuil natation), récup 20\".", "Z3"),
+        Session("swim-css", "swim", "threshold", "Natation — CSS 8×100m", 45, "Échauff. + 8×100m à allure CSS, récup 15\". Seuil natation.", "Z3"),
+        Session("swim-css", "swim", "technique", "Natation — pyramide", 45, "50-100-150-100-50m en montée d'allure, technique soignée. Varié et ludique.", "Z3"),
+        Session("swim-css", "swim", "threshold", "Natation — 4×200m", 45, "Échauff. + 4×200m réguliers à allure soutenue, récup 30\". Endurance.", "Z3"),
+    ],
+    "build-long": [
+        Session("run-long", "run", "long", "Sortie longue Z2", 95, "Z2 en extérieur. Maintien du volume aérobie tout l'hiver (dehors, pas tapis).", "Z2"),
+        Session("run-long", "run", "long", "Longue + finish tempo", 95, "Z2 puis 10' tempo en fin. Courir vite sur jambes fatiguées.", "Z2-Z3"),
+        Session("run-long", "run", "long", "Longue vallonnée", 95, "Z2 sur du relief. Force spécifique et variété de terrain.", "Z2"),
+        Session("run-long", "run", "long", "Longue avec surges", 95, "Z2 + 6×1' soutenu disséminés dans la sortie. Casse la monotonie.", "Z2-Z3"),
+    ],
+    "build-bikelong": [
+        Session("bike-long", "bike", "long", "Vélo salle long", 80, "Z2 long sur home-trainer. Finis par 10' de course (brick).", "Z2"),
+        Session("bike-long", "bike", "tempo", "Vélo long + tempo", 80, "Z2 + 3×10' tempo, récup 5'. Soutien aérobie + brick 10'.", "Z3"),
+        Session("burn", "strength", "burn", "2e Burn (cardio-endu)", 75, "2e cours Burn plus cardio cette semaine, ou home-trainer Z2 long si fatigue.", "Z3"),
+    ],
+    # ---- SPECIFIC ----
+    "spec-swimrec": [
+        Session("swim-rec", "swim", "recovery", "Natation récup", 35, "Nage souple, respiration bilatérale. Récup active des jambes.", "Z1"),
+        Session("swim-rec", "swim", "recovery", "Natation technique souple", 35, "Éducatifs + nage facile. Sensations et relâchement.", "Z1"),
+    ],
+    "spec-vo2": [
+        Session("run-vo2", "run", "vo2", "VO2max 6×800m", 60, "Échauff. 20' + 6×800m à allure 5km, récup 2'30. Le moteur du 20km.", "Z5"),
+        Session("run-vo2", "run", "vo2", "VO2max 10×400m", 60, "Échauff. + 10×400m vifs, récup 1'30. Vitesse pure et VO2.", "Z5"),
+        Session("run-vo2", "run", "vo2", "VO2max 5×1000m", 60, "Échauff. + 5×1000m à allure 5km, récup 3'. Soutien du VO2max.", "Z5"),
+        Session("run-vo2", "run", "vo2", "VO2max 12×300m", 60, "Échauff. + 12×300m rapides, récup 1'. Fréquence et relâchement à vitesse.", "Z5"),
+        Session("run-vo2", "run", "vo2", "VO2max 4×1200m", 60, "Échauff. + 4×1200m proches allure 5km, récup 3'. Endurance de VO2.", "Z5"),
+    ],
+    "spec-bike": [
+        Session("bike-thr", "bike", "threshold", "Vélo FTP 3×12'", 75, "Échauff. + 3×12' à 95–100% FTP, récup 5'. Vélo du 70.3.", "Z4"),
+        Session("bike-thr", "bike", "threshold", "Vélo over-unders 4×8'", 75, "4×8' (alternance 95%/105% par minute), récup 5'. Tolérance au seuil.", "Z4"),
+        Session("bike-thr", "bike", "threshold", "Vélo 2×20' seuil", 75, "Échauff. + 2×20' à 95% FTP, récup 8'. Endurance de puissance 70.3.", "Z4"),
+        Session("bike-thr", "bike", "vo2", "Vélo VO2 5×4'", 75, "Échauff. + 5×4' à 110–115% FTP, récup 4'. Relève le plafond.", "Z5"),
+    ],
+    "spec-rp": [
+        Session("run-rp", "run", "tempo", "Allure 20km 2×15'", 60, "Échauff. 15' + 2×15' à allure objectif 20km, récup 3'. Ancre l'allure.", "Z4"),
+        Session("run-rp", "run", "tempo", "Allure 20km 4×8'", 60, "Échauff. + 4×8' à allure objectif, récup 2'. Densité à l'allure cible.", "Z4"),
+        Session("run-rp", "run", "tempo", "Allure 20km 20' continu", 60, "Échauff. + 20' continus à allure objectif. Test de tenue mentale.", "Z4"),
+        Session("run-rp", "run", "tempo", "Allure 20km en escalier", 60, "Échauff. + 10'-8'-6'-4' à allure objectif, récup 2'. Varié et stimulant.", "Z4"),
+    ],
+    "spec-swimow": [
+        Session("swim-ow", "swim", "threshold", "Natation CSS 8×100m", 55, "8×100m à allure CSS, récup 15\". Seuil natation.", "Z3"),
+        Session("swim-ow", "swim", "threshold", "Eau libre / sighting", 55, "Eau libre si possible : sighting tous les 6 mvts, départ groupé. Sinon 6×150m CSS.", "Z3"),
+        Session("swim-ow", "swim", "threshold", "Natation 3×300m", 55, "Échauff. + 3×300m réguliers à allure 70.3, récup 30\". Endurance spécifique.", "Z3"),
+    ],
+    "spec-long": [
+        Session("run-long", "run", "long", "Long + bloc allure", 100, "70' Z2 + 4×5' à allure 20km en fin. Fraîcheur sous fatigue.", "Z2-Z4"),
+        Session("run-long", "run", "long", "Long progressif", 100, "Z2 et finis les 20 dernières minutes en allure semi. Mental + physiologie.", "Z2-Z3"),
+        Session("run-long", "run", "long", "Long + surges", 100, "Z2 avec 8×1' à allure 10km disséminés. Casse la routine du long.", "Z2-Z4"),
+    ],
+    "spec-brick": [
+        Session("brick", "brick", "long", "Brick 90' vélo → 25' course", 120, "90' vélo Z2-Z3 (2×15' tempo) puis 25' course allure 70.3. Le geste spécifique.", "Z3"),
+        Session("brick", "brick", "long", "Brick court & intense", 110, "60' vélo avec 3×8' au seuil + 20' course allure 70.3. Transition sous intensité.", "Z3-Z4"),
+        Session("brick", "brick", "long", "Brick long endurance", 120, "2h vélo Z2 régulier + 15' course souple. Endurance et habitude des jambes.", "Z2"),
+    ],
+}
+
+
+def _base_week(i: int) -> dict[int, list[Session]]:
     return {
         0: [Session("mobility", "mobility", "mobility", "Mobilité & gainage", 25,
                     "Routine hanches/chevilles + gainage 3x. Récup active.", "Z1")],
-        1: [Session("run-easy", "run", "easy", "Footing facile + lignes", 55,
-                    "Z2 confortable, tu peux parler. Finir par 6×20\" lignes en accélération.", "Z2")],
-        2: [Session("swim-tech", "swim", "technique", "Natation technique", 45,
-                    "Éducatifs (rattrapé, poings fermés), 8×50m focus glisse. La technique avant le volume.", "Z2")],
-        3: [Session("run-tempo", "run", "tempo", "Footing avec tempo", 50,
-                    "20' Z2 + 15' allure tempo (confortablement dur) + 15' retour au calme.", "Z3")],
-        4: [Session("bike-endu", "bike", "easy", "Vélo endurance", 75,
-                    "Z2 régulier, cadence 85–95. Travail de l'aisance et de la position.", "Z2")],
-        5: [Session("run-long", "run", "long", "Sortie longue course", 90,
-                    "Z2 strict, allonge la durée de +5–10' chaque semaine. Le pilier de la base.", "Z2")],
-        6: [Session("bike-long", "bike", "long", "Vélo long (ou brick léger)", 105,
-                    "Z2. 1×/2 semaines : enchaîne 15' de course juste après (brick découverte).", "Z2")],
+        1: [_pick(_VAR["base-q"], i)],
+        2: [_pick(_VAR["base-swim"], i)],
+        3: [_pick(_VAR["base-tempo"], i)],
+        4: [_pick(_VAR["base-bike"], i)],
+        5: [_pick(_VAR["base-long"], i)],
+        6: [_pick(_VAR["base-bikelong"], i)],
     }
 
 
-def _build_week() -> dict[int, list[Session]]:
+def _build_week(i: int) -> dict[int, list[Session]]:
     return {
         0: [Session("rest", "rest", "recovery", "Repos", 0,
                     "Repos complet ou marche. La force fatigue : respecte la récup.", "Z1")],
-        1: [Session("burn", "strength", "burn", "Le Mix — Burn (vitesse & force)", 60,
-                    "Cours Burn : ton travail de vitesse/puissance de l'hiver + base force full-body pour les 3 disciplines.", "Z4")],
-        2: [Session("bike-ss", "bike", "sweetspot", "Vélo salle — Sweet spot", 60,
-                    "Échauff. 15' puis 3×10' à 88–93% FTP (sweet spot), récup 4'. Gagne ta puissance ici.", "Z3")],
-        3: [Session("run-thr", "run", "threshold", "Course seuil (extérieur)", 55,
-                    "Échauff. 15' + 4×6' au seuil (allure ~semi) DEHORS, récup 90\". Couvre-toi et échauffe-toi bien avant les fractions.", "Z4")],
-        4: [Session("swim-css", "swim", "technique", "Natation technique + CSS", 45,
-                    "Éducatifs puis 6×100m à allure CSS (seuil natation). Garde le contact avec l'eau.", "Z3")],
-        5: [Session("run-long", "run", "long", "Sortie longue course", 95,
-                    "Z2 en extérieur. Maintien du volume aérobie course tout l'hiver (tu cours dehors, pas sur tapis).", "Z2")],
-        6: [Session("bike-long", "bike", "long", "Vélo salle long / Burn endu", 80,
-                    "Z2 long sur home-trainer, ou 2e Burn plus cardio. Finir par 10' de course (brick).", "Z2")],
+        1: [_pick(_VAR["build-burn"], i)],
+        2: [_pick(_VAR["build-bike"], i)],
+        3: [_pick(_VAR["build-thr"], i)],
+        4: [_pick(_VAR["build-swim"], i)],
+        5: [_pick(_VAR["build-long"], i)],
+        6: [_pick(_VAR["build-bikelong"], i)],
     }
 
 
-def _specific_week() -> dict[int, list[Session]]:
+def _specific_week(i: int) -> dict[int, list[Session]]:
     return {
-        0: [Session("swim-rec", "swim", "recovery", "Natation récup / technique", 35,
-                    "Nage souple, focus respiration bilatérale. Récup active des jambes.", "Z1")],
-        1: [Session("run-vo2", "run", "vo2", "Course VO2max", 60,
-                    "Échauff. 20' + 6×800m à allure 5km (~3:15–3:25/km), récup 2'30. Le moteur du 20km.", "Z5")],
-        2: [Session("bike-thr", "bike", "threshold", "Vélo seuil / FTP", 75,
-                    "Échauff. + 3×12' à 95–100% FTP, récup 5'. Prépare la partie vélo du 70.3.", "Z4")],
-        3: [Session("run-rp", "run", "tempo", "Course allure 20km", 60,
-                    "Échauff. 15' + 2×15' à allure objectif 20km, récup 3'. Ancre l'allure de course.", "Z4")],
-        4: [Session("swim-ow", "swim", "threshold", "Natation CSS / eau libre", 55,
-                    "8×100m CSS, ou eau libre dès que possible (sighting, départ groupé).", "Z3")],
-        5: [Session("run-long", "run", "long", "Long avec bloc allure", 100,
-                    "70' Z2 + 4×5' à allure 20km en fin de sortie. Fraîcheur sous fatigue.", "Z2-Z4")],
-        6: [Session("brick", "brick", "long", "Brick vélo → course", 120,
-                    "90' vélo Z2-Z3 avec 2×15' tempo, puis 25' course allure 70.3. Spécifique triathlon.", "Z3")],
+        0: [_pick(_VAR["spec-swimrec"], i)],
+        1: [_pick(_VAR["spec-vo2"], i)],
+        2: [_pick(_VAR["spec-bike"], i)],
+        3: [_pick(_VAR["spec-rp"], i)],
+        4: [_pick(_VAR["spec-swimow"], i)],
+        5: [_pick(_VAR["spec-long"], i)],
+        6: [_pick(_VAR["spec-brick"], i)],
     }
 
 
@@ -232,11 +335,11 @@ def build_week(week_index: int, monday: date) -> dict:
     deload = is_deload(week_index)
 
     if phase.key == "base":
-        tmpl = _base_week()
+        tmpl = _base_week(week_index)
     elif phase.key == "build":
-        tmpl = _build_week()
+        tmpl = _build_week(week_index)
     elif phase.key == "specific":
-        tmpl = _specific_week()
+        tmpl = _specific_week(week_index)
     else:
         tmpl = _peak_week(monday)
 
