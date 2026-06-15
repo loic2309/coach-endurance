@@ -367,12 +367,13 @@ async function viewProgression() {
     <div class="card"><h2 class="with-eyebrow">Forme du moment</h2>
       <div class="eyebrow">${f.status_label}</div>
       <div class="grid cols-3" style="gap:12px;margin-bottom:6px">
-        ${_metric("Forme (TSB)", f.form, fColor, "fraîcheur · élevé = prêt à performer")}
-        ${_metric("Fitness (CTL)", f.fitness, "#22d3ee", "charge chronique · " + trendTxt)}
-        ${_metric("Fatigue (ATL)", f.fatigue, "#fb7185", "charge des 7 derniers jours")}
+        ${_metric("⚡ Forme", f.form, fColor, "ce qu'il te reste dans les jambes · + = frais")}
+        ${_metric("🏦 Fitness", f.fitness, "#22d3ee", "ton endurance accumulée · " + trendTxt)}
+        ${_metric("💸 Fatigue", f.fatigue, "#fb7185", "ta fatigue des 7 derniers jours")}
       </div>
+      <div class="chart-title">🏦 Ton niveau de <b>Fitness</b> (endurance de fond), semaine par semaine</div>
       <canvas id="ctlChart" height="80"></canvas>
-      <p class="small muted" style="margin:12px 0 0">La <b>Forme</b> monte quand tu récupères, baisse quand tu charges. La <b>Fitness</b> qui grimpe = tu construis ton moteur.</p>
+      <p class="small muted" style="margin:12px 0 0">Image simple : la <b>Fitness</b> 🏦 = ton compte en banque d'entraînement (se construit lentement). La <b>Fatigue</b> 💸 = tes dépenses récentes. La <b>Forme</b> ⚡ = ce qu'il te reste dans les jambes (Fitness − Fatigue). <b>Quand la courbe monte, ton moteur grossit.</b></p>
     </div>` : "";
 
   const goal20 = g.race_20km.goal_realistic_min * 60, goal703 = g.race_703.goal_min * 60;
@@ -390,8 +391,9 @@ async function viewProgression() {
   const efCard = eff.available ? `
     <div class="card"><h2 class="with-eyebrow">Efficacité aérobie</h2>
       <div class="eyebrow">${eff.verdict}</div>
+      <div class="chart-title">🫀 Vitesse pour une même fréquence cardiaque, mois par mois</div>
       <canvas id="efChart" height="90"></canvas>
-      <p class="small muted" style="margin:12px 0 0">Vitesse par battement de cœur (sorties faciles). Quand la courbe <b>monte</b>, tu cours plus vite à FC égale : le vrai signe que tu progresses.</p>
+      <p class="small muted" style="margin:12px 0 0">Sur tes sorties faciles, combien de vitesse tu sors par battement de cœur. Quand la courbe <b>monte</b>, tu cours plus vite au même effort cardiaque : <b>c'est LE signe que tu progresses</b>.</p>
     </div>` : "";
 
   const effortCards = ["run", "bike", "swim"].map((sp) => {
@@ -411,18 +413,20 @@ async function viewProgression() {
     <div class="section-title">Meilleures allures récentes</div>
     <div class="grid cols-3">${effortCards}</div>`;
 
-  if (f.available) drawLineChart("ctlChart", f.weekly.map((w) => w.label), f.weekly.map((w) => w.ctl), "#22d3ee");
-  if (eff.available) drawLineChart("efChart", eff.series.map((s) => s.month), eff.series.map((s) => s.ef), "#34d399");
+  if (f.available) drawLineChart("ctlChart", f.weekly.map((w) => w.label), f.weekly.map((w) => w.ctl), "#22d3ee", "Fitness");
+  if (eff.available) drawLineChart("efChart", eff.series.map((s) => s.month), eff.series.map((s) => s.ef), "#34d399", "Efficacité");
   drawLoadChart();
 }
 
-function drawLineChart(id, labels, data, color) {
+function drawLineChart(id, labels, data, color, name) {
   const ctx = $("#" + id); if (!ctx) return;
   new Chart(ctx, {
     type: "line",
-    data: { labels, datasets: [{ data, borderColor: color, backgroundColor: color + "22",
+    data: { labels, datasets: [{ label: name, data, borderColor: color, backgroundColor: color + "22",
       fill: true, tension: 0.35, pointRadius: 3, borderWidth: 2 }] },
-    options: { responsive: true, plugins: { legend: { display: false } },
+    options: { responsive: true,
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: (c) => `${name} : ${c.parsed.y}` } } },
       scales: { x: { grid: { display: false }, ticks: { color: "#8b97a8" } },
         y: { grid: { color: "rgba(255,255,255,0.05)" }, ticks: { color: "#8b97a8" } } } },
   });
