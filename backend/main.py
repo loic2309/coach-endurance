@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import analytics, coaching, db, fitness, gamification, garmin_sync, plan_engine
+from . import analytics, coaching, db, fitness, gamification, garmin_sync, plan_engine, week_review
 from .config import settings
 
 app = FastAPI(title="Coach Endurance — 20km & 70.3")
@@ -70,6 +70,11 @@ def gamification_state():
 @app.get("/api/progression")
 def progression_state():
     return fitness.state()
+
+
+@app.get("/api/week-activities")
+def week_activities_state():
+    return week_review.week_activities()
 
 
 @app.get("/api/plan")

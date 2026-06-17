@@ -36,6 +36,7 @@ function staticApi(path, opts) {
   if (path.startsWith("/api/coaching")) return D.coaching;
   if (path.startsWith("/api/gamification")) return D.gamification;
   if (path.startsWith("/api/progression")) return D.progression;
+  if (path.startsWith("/api/week-activities")) return D.week_activities;
   if (path.startsWith("/api/load")) return D.load;
   if (path.startsWith("/api/week")) {
     const d = new URL(path, "http://x").searchParams.get("d");
@@ -70,6 +71,7 @@ async function getOverview() { return cache.overview ??= await api("/api/overvie
 async function getCoaching() { return cache.coaching ??= await api("/api/coaching"); }
 async function getGamification() { return cache.gam ??= await api("/api/gamification"); }
 async function getProgression() { return cache.prog ??= await api("/api/progression"); }
+async function getWeekActivities() { return cache.wa ??= await api("/api/week-activities"); }
 let currentMonday = null;
 
 // ---------------- Progress ring ----------------
@@ -270,6 +272,18 @@ async function viewWeek(dateIso) {
       ${sess}</div>`;
   }).join("");
 
+  // Sorties réellement réalisées — uniquement quand on regarde la semaine en cours.
+  const wa = await getWeekActivities().catch(() => null);
+  const isCurrentWeek = wa && wa.available && wa.week_start === wk.monday;
+  weekActs = isCurrentWeek ? wa.activities : [];
+  let realised = "";
+  if (isCurrentWeek) {
+    const cards = weekActs.length
+      ? `<div class="grid cols-3">${weekActs.map((a, i) => actCard(a, i)).join("")}</div>`
+      : `<p class="empty">Rien encore enregistré cette semaine. Fais ta séance puis clique 🔄 Synchroniser.</p>`;
+    realised = `<div class="section-title">✅ Réalisé cette semaine${weekActs.length ? ` · ${wa.count} séance${wa.count > 1 ? "s" : ""} · ${wa.total_min} min` : ""}</div>${cards}`;
+  }
+
   $("#view").innerHTML = `
     <div class="week-head">
       <div class="week-nav">
@@ -277,20 +291,85 @@ async function viewWeek(dateIso) {
         <span id="week-label">Sem. du ${fmtDate(wk.monday)}</span>
         <button class="iconbtn" id="next-week">▶</button>
       </div>
-      <div class="chip">Volume planifié <b>${wk.total_hours}h</b></div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <div class="chip">Volume planifié <b>${wk.total_hours}h</b></div>
+        <button class="btn" id="week-sync">🔄 Synchroniser</button>
+      </div>
     </div>
+    <div id="sync-status" class="small muted" style="margin:-6px 0 12px"></div>
     <div class="phase-banner" style="border-left-color:${ph.color}">
       <div class="pb-top"><b style="color:${ph.color}">${ph.phase_label || ph.name}</b>
         ${wk.deload ? '<span class="deload">· semaine d\'allègement</span>' : ""}</div>
       <p class="small muted" style="margin:6px 0 0">${ph.focus}</p>
     </div>
+    ${realised ? realised + '<div style="height:22px"></div>' : ""}
+    <div class="section-title" style="margin-top:0">📋 Programme prévu</div>
     <div class="week-grid">${days}</div>`;
 
   $("#prev-week").onclick = () => shiftWeek(-7);
   $("#next-week").onclick = () => shiftWeek(7);
+  $("#week-sync").onclick = syncFromWeek;
   $$(".sess").forEach((s) => s.onclick = () => openDrawer(s.dataset.date, +s.dataset.idx));
+  $$(".act-card").forEach((c) => c.onclick = () => openActivityDrawer(+c.dataset.i));
 }
-let weekData = null;
+let weekData = null, weekActs = [];
+
+async function syncFromWeek() {
+  const btn = $("#week-sync"), st = $("#sync-status");
+  btn.disabled = true; st.textContent = "Connexion à Garmin…";
+  try {
+    const r = await api("/api/sync", { method: "POST" });
+    st.textContent = `✅ ${r.imported} activités importées.`;
+    delete cache.overview; delete cache.gam; delete cache.prog; delete cache.wa;
+    await viewWeek(currentMonday);
+  } catch (e) {
+    st.textContent = "⚠️ " + e.message;
+  } finally { const b = $("#week-sync"); if (b) b.disabled = false; }
+}
+
+function actCard(a, i) {
+  const vc = { ok: "var(--ok)", warn: "var(--warn)", cyan: "var(--accent)" }[a.verdict.color] || "var(--accent)";
+  return `<div class="card act-card ${a.sport}" data-i="${i}">
+    <div class="act-top"><span class="muted small">${a.emoji} ${a.weekday}</span>
+      <span class="vscore" style="color:${vc};border-color:${vc}">${a.verdict.score}/10</span></div>
+    <div class="act-name">${a.name}</div>
+    <div class="act-stats">${a.km ? a.km + " km · " : ""}${a.pace}${a.pct_max ? ` · FC ${a.pct_max}%` : ""}</div>
+    <div class="act-verdict" style="color:${vc}">${a.verdict.label}</div>
+  </div>`;
+}
+
+function openActivityDrawer(i) {
+  const a = weekActs[i]; if (!a) return;
+  const vc = { ok: "var(--ok)", warn: "var(--warn)", cyan: "var(--accent)" }[a.verdict.color] || "var(--accent)";
+  const z = a.zones, tot = (z.z1 + z.z2 + z.z3 + z.z4 + z.z5) || 1;
+  const zc = { z1: "#38bdf8", z2: "#34d399", z3: "#fbbf24", z4: "#fb7185", z5: "#c084fc" };
+  const zbar = `<div class="zbar">${[1, 2, 3, 4, 5].map((n) => z["z" + n] ? `<div style="width:${z["z" + n] / tot * 100}%;background:${zc["z" + n]}" title="Z${n} ${z["z" + n]} min"></div>` : "").join("")}</div>
+    <div class="zlegend">${[1, 2, 3, 4, 5].map((n) => `<span><i style="background:${zc["z" + n]}"></i>Z${n} ${z["z" + n]}'</span>`).join("")}</div>`;
+  const m = (k, v) => v != null && v !== "" ? `<div class="m"><div class="k">${k}</div><div class="v">${v}</div></div>` : "";
+  const d = $("#drawer");
+  d.innerHTML = `
+    <button class="dr-close" id="dr-close">✕</button>
+    <span class="dr-sport" style="background:${vc}22;color:${vc}">${a.emoji} ${a.weekday} ${fmtDate(a.date)}</span>
+    <h2>${a.name}</h2>
+    <div style="display:flex;align-items:center;gap:10px;margin:6px 0 14px">
+      <span class="vscore big" style="color:${vc};border-color:${vc}">${a.verdict.score}/10</span>
+      <b style="color:${vc}">${a.verdict.label}</b>
+    </div>
+    <div class="dr-meta">
+      ${m("Distance", a.km ? a.km + " km" : null)}${m("Durée", a.dur_min + " min")}${m("Allure", a.pace)}
+      ${m("FC moy", a.avg_hr ? a.avg_hr + " bpm" : null)}${m("FC max", a.max_hr ? a.max_hr + " bpm" : null)}
+      ${m("Cadence", a.cadence ? a.cadence + " ppm" : null)}${m("Foulée", a.stride ? a.stride + " cm" : null)}
+      ${m("Puissance", a.power ? a.power + " W" : null)}${m("D+", a.elevation ? a.elevation + " m" : null)}
+      ${m("Calories", a.calories)}${m("VO2max", a.vo2max)}
+      ${m("Effet aéro", a.aerobic_te + "/5")}${m("Effet anaéro", a.anaerobic_te + "/5")}
+    </div>
+    <div class="block-title" style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-weight:800;margin:6px 0 8px">Répartition FC</div>
+    ${zbar}
+    <div class="block-title" style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-weight:800;margin:18px 0 8px">Analyse</div>
+    <ul class="dr-insights">${a.verdict.insights.map((x) => `<li>${x}</li>`).join("")}</ul>`;
+  $("#dr-close").onclick = closeDrawer;
+  d.classList.add("open"); $("#drawer-backdrop").classList.add("open");
+}
 
 function sessCard(planDate, idx, s) {
   if (s.sport === "rest") return `<div class="rest">😴 ${s.title}</div>`;

@@ -313,6 +313,28 @@ a { color: inherit; text-decoration: none; }
 .chart-title { font-size: 0.82rem; font-weight: 700; color: var(--text); margin: 4px 0 10px; }
 .chart-title b { color: var(--accent); }
 
+/* Sorties réalisées (Garmin) */
+.act-card { cursor: pointer; border-left: 3px solid var(--muted); transition: 0.13s; }
+.act-card:hover { background: var(--surface-2); transform: translateY(-2px); }
+.act-card.run { border-left-color: var(--run); }
+.act-card.bike { border-left-color: var(--bike); }
+.act-card.swim { border-left-color: var(--swim); }
+.act-card.strength { border-left-color: var(--strength); }
+.act-top { display: flex; justify-content: space-between; align-items: center; }
+.vscore { border: 1px solid; border-radius: 999px; padding: 1px 9px; font-weight: 800; font-size: 0.78rem; }
+.vscore.big { font-size: 1rem; padding: 3px 12px; }
+.act-name { font-weight: 700; margin: 8px 0 2px; font-size: 0.95rem; }
+.act-stats { font-size: 0.82rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.act-verdict { font-size: 0.82rem; font-weight: 700; margin-top: 8px; }
+
+.zbar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: var(--surface-2); }
+.zbar div { height: 100%; }
+.zlegend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; font-size: 0.74rem; color: var(--muted); }
+.zlegend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; }
+.dr-insights { list-style: none; padding: 0; margin: 0; }
+.dr-insights li { display: flex; gap: 8px; padding: 5px 0; font-size: 0.88rem; }
+.dr-insights li::before { content: "›"; color: var(--accent); font-weight: 800; }
+
 .empty { color: var(--muted); text-align: center; padding: 30px; font-size: 0.9rem; }
 .loading { color: var(--muted); padding: 40px; text-align: center; }
 .errbar { background: rgba(251,113,133,0.15); border: 1px solid var(--bad); color: #fecdd3; padding: 12px 16px; border-radius: var(--r); margin-bottom: 16px; font-size: 0.88rem; }
